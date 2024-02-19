@@ -66,6 +66,9 @@ func (fm *FileBrowserModel) walk(p string, item teatree.ItemHolder) error {
 			log.Printf("prevent panic by handling failure accessing a path %q: %v\n", path, err)
 			return err
 		}
+		if path == p {
+			return nil
+		}
 
 		var icon string
 		canHaveChildren := d.IsDir()

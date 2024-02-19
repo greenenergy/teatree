@@ -66,11 +66,27 @@ func (ti *TreeItem) GetItems() []*TreeItem {
 func (ti *TreeItem) View() string {
 	// Return the view string for myself plus my children if I am open
 	//return " " + "󰅂" + ti.Icon + " " + ti.Name
-	s := ti.Icon + " " + ti.Name
+	s := " "
+	if ti.CanHaveChildren {
+		if ti.Open {
+			s += ChevronDown
+		} else {
+			s += ChevronRight
+		}
+	} else {
+		s += " "
+	}
+
+	s += ti.Icon + " " + ti.Name
+
 	if len(ti.Children) > 0 && ti.Open {
 		var kids []string
 		for _, item := range ti.Children {
-			kids = append(kids, item.View())
+
+			inners := " " + " "
+
+			inners += item.View()
+			kids = append(kids, inners)
 		}
 		s += "\n" + strings.Join(kids, "\n")
 	}
@@ -163,7 +179,6 @@ type Tree struct {
 	initialized          bool
 	Style                lipgloss.Style
 	KeyMap               KeyMap
-	quitting             bool
 }
 
 func DefaultKeyMap() KeyMap {
@@ -225,9 +240,11 @@ func (t *Tree) Init() tea.Cmd {
 	return nil
 }
 
+/*
 func (t *Tree) Render() {
 	log.Println("At Tree.Render()")
 }
+*/
 
 // SelectPrevious - selects the previous TreeItem. This involves first getting the parent and then telling the parent to select the previous item from the current selection. If we're already at the first child, then we go to the grandparent and select the previous parent item from us, and then we descend to the most open child and activate that.rune
 func (t *Tree) SelectPrevious() {
@@ -291,9 +308,6 @@ func (t *Tree) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			t.SelectPrevious()
 		case "down", "j":
 			t.SelectNext()
-		case "ctrl+c", "q":
-			t.quitting = true
-			return t, tea.Quit
 		case " ", ".":
 			t.ToggleChild()
 			return t, nil
@@ -317,13 +331,6 @@ func (t *Tree) View() string {
 	// Iterate through the children, calling View() on each of them.
 	for _, item := range t.Items {
 		s := " "
-		if item.CanHaveChildren {
-			if item.Open {
-				s = ChevronDown
-			} else {
-				s = ChevronRight
-			}
-		}
 		s += item.View()
 		if item == t.ActiveItem {
 			views = append(views, focusedStyle.Render(s))
@@ -331,7 +338,6 @@ func (t *Tree) View() string {
 			views = append(views, unfocusedStyle.Render(s))
 		}
 	}
-	//return strings.Join(views, "\n")
 
 	return lipgloss.JoinVertical(
 		lipgloss.Left, views...,
