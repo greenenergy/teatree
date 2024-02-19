@@ -95,6 +95,38 @@ func (ti *TreeItem) SelectPrevious() {
 	}
 }
 
+// We're being told to select the next item relative to our current position.
+func (ti *TreeItem) SelectNext() {
+	descend := true
+	for {
+		parentItems := ti.Parent.GetItems()
+
+		if len(ti.Children) > 0 && ti.Open && descend {
+			ti.ParentTree.ActiveItem = ti.Children[0]
+			return
+		}
+
+		for x, item := range parentItems {
+			if item == ti {
+				if x+1 < len(parentItems) {
+					ti.ParentTree.ActiveItem = parentItems[x+1]
+					return
+				}
+			}
+		}
+		if ti.Parent == ti.ParentTree {
+			// We've hit the top
+			log.Println("** Found the parent, stopping treeclimb")
+			return
+		}
+		// To get here, the user has tried to go past the end of the current list of children.
+		// So we now need to tell our parent to choose a sibling. We turn off descent because
+		// we aren't here going into an item, because we've already gone beyond the end of a list
+		descend = false
+		ti = ti.Parent.(*TreeItem)
+	}
+}
+
 func (ti *TreeItem) View() string {
 	// Return the view string for myself plus my children if I am open
 	var s string
@@ -307,51 +339,20 @@ func (t *Tree) SelectPrevious() {
 		active.SelectPrevious()
 		return
 	}
-	/*
-		parent := active.GetParent()
-		var grandparent ItemHolder
-		if parent != nil {
-			grandparent = parent.GetParent()
-		}
-
-		parentItems := parent.GetItems()
-
-		for x, item := range parentItems {
-			if item == active {
-				if x-1 >= 0 {
-					t.ActiveItem = parentItems[x-1]
-				}
-				return
-			}
-		}
-	*/
-	log.Println("prev not found")
-}
-
-func (t *Tree) OldSelectPrevious() {
-	active := t.ActiveItem
-	parent := active.GetParent()
-	/*
-		var grandparent ItemHolder
-		if parent != nil {
-			grandparent = parent.GetParent()
-		}
-	*/
-	parentItems := parent.GetItems()
-
-	for x, item := range parentItems {
-		if item == active {
-			if x-1 >= 0 {
-				t.ActiveItem = parentItems[x-1]
-			}
-			return
-		}
-	}
 	log.Println("prev not found")
 }
 
 // SelectNext is like SelectPrevious, but the other way
 func (t *Tree) SelectNext() {
+	active := t.ActiveItem
+	if active != nil {
+		active.SelectNext()
+		return
+	}
+	log.Println("next not found")
+}
+
+func (t *Tree) OldSelectNext() {
 	active := t.ActiveItem
 	parent := active.Parent
 	parentItems := parent.GetItems()
