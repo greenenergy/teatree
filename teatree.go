@@ -2,7 +2,6 @@ package teatree
 
 import (
 	"log"
-	"strings"
 	"sync"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -11,6 +10,7 @@ import (
 )
 
 // This is the material design icon in the nerdfont/material symbols set, as found in https://pictogrammers.com/library/mdi/
+const NoChevron = " "
 const ChevronRight = "\U000F0142"
 const ChevronDown = "\U000F0140"
 const Folder = "\U000F024B"
@@ -39,16 +39,18 @@ var (
 
 type TreeItem struct {
 	sync.Mutex
-	Parent   ItemHolder
-	Icon     string `json:"icon"`
-	Name     string `json:"name"`
-	Children []*TreeItem
+	ParentTree *Tree
+	Parent     ItemHolder
+	Icon       string `json:"icon"`
+	Name       string `json:"name"`
+	Children   []*TreeItem
 	// CanHaveChildren: By setting this to True, you say that this item can have children. This allows for the implementation of a lazy loader, when you supply an Open() function. This affects how the item is rendered.
 	CanHaveChildren bool
 	Open            bool
 	Data            interface{}
 	OpenFunc        func(*TreeItem)
 	CloseFunc       func(*TreeItem)
+	indent          int
 }
 
 func (ti *TreeItem) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -65,8 +67,10 @@ func (ti *TreeItem) GetItems() []*TreeItem {
 
 func (ti *TreeItem) View() string {
 	// Return the view string for myself plus my children if I am open
-	//return " " + "󰅂" + ti.Icon + " " + ti.Name
-	s := " "
+	var s string
+	for x := 0; x < ti.indent; x++ {
+		s += "  "
+	}
 	if ti.CanHaveChildren {
 		if ti.Open {
 			s += ChevronDown
@@ -74,21 +78,33 @@ func (ti *TreeItem) View() string {
 			s += ChevronRight
 		}
 	} else {
-		s += " "
+		s += NoChevron
 	}
 
-	s += ti.Icon + " " + ti.Name
+	ai := ti.ParentTree.ActiveItem
+
+	if ai != nil && ai == ti {
+		// If this is the active item, then we should be highlit
+		s = focusedStyle.Render(s + ti.Icon + " " + ti.Name)
+	} else {
+		//s += ti.Icon + " " + ti.Name
+		s = unfocusedStyle.Render(s + ti.Icon + " " + ti.Name)
+	}
 
 	if len(ti.Children) > 0 && ti.Open {
 		var kids []string
 		for _, item := range ti.Children {
-
-			inners := " " + " "
-
+			item.indent = ti.indent + 1
+			inners := ""
 			inners += item.View()
 			kids = append(kids, inners)
 		}
-		s += "\n" + strings.Join(kids, "\n")
+		composite := []string{s}
+		composite = append(composite, kids...)
+		s = lipgloss.JoinVertical(
+			lipgloss.Left,
+			composite...,
+		)
 	}
 	return s
 }
@@ -136,6 +152,7 @@ func (ti *TreeItem) AddChildren(children ...*TreeItem) ItemHolder {
 
 	for _, child := range children {
 		child.Parent = ti
+		child.ParentTree = ti.ParentTree
 	}
 
 	return ti
@@ -224,6 +241,7 @@ func (t *Tree) AddChildren(i ...*TreeItem) ItemHolder {
 	}
 	for _, item := range i {
 		item.Parent = t
+		item.ParentTree = t
 	}
 	return t
 }
@@ -268,6 +286,12 @@ func (t *Tree) SelectNext() {
 	active := t.ActiveItem
 	parent := active.Parent
 	parentItems := parent.GetItems()
+
+	// If this has children, and they are open, then "down" will activate the first child
+	if len(active.Children) > 0 && active.Open {
+		t.ActiveItem = active.Children[0]
+		return
+	}
 
 	for x, item := range parentItems {
 		if item == active {
@@ -330,13 +354,8 @@ func (t *Tree) View() string {
 	var views []string
 	// Iterate through the children, calling View() on each of them.
 	for _, item := range t.Items {
-		s := " "
-		s += item.View()
-		if item == t.ActiveItem {
-			views = append(views, focusedStyle.Render(s))
-		} else {
-			views = append(views, unfocusedStyle.Render(s))
-		}
+		item.indent = 0
+		views = append(views, item.View())
 	}
 
 	return lipgloss.JoinVertical(

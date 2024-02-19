@@ -67,6 +67,7 @@ func (fm *FileBrowserModel) walk(p string, item teatree.ItemHolder) error {
 			return err
 		}
 		if path == p {
+			// We don't want to render the folder we were sent. This is redundant and confusing for the user.
 			return nil
 		}
 
@@ -90,7 +91,8 @@ func (fm *FileBrowserModel) walk(p string, item teatree.ItemHolder) error {
 			}
 		}
 		var children []*teatree.TreeItem
-		newitem := teatree.NewItem(path, icon, canHaveChildren, children, openFunc, nil, nil)
+		//newitem := teatree.NewItem(path, icon, canHaveChildren, children, openFunc, nil, nil)
+		newitem := teatree.NewItem(d.Name(), icon, canHaveChildren, children, openFunc, nil, nil)
 		// TODO: Need to add OpenFunc() that can walk another hierarchy level.
 		item.AddChildren(newitem)
 
