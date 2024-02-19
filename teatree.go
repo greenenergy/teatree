@@ -23,6 +23,7 @@ type ItemHolder interface {
 	// be the last one in the list
 	GetPath() []string
 	AddChildren(...*TreeItem) ItemHolder
+	GetParent() ItemHolder
 }
 
 // Styling
@@ -53,6 +54,10 @@ type TreeItem struct {
 	indent          int
 }
 
+func (ti *TreeItem) GetParent() ItemHolder {
+	return ti.Parent
+}
+
 func (ti *TreeItem) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return ti, nil
 }
@@ -63,6 +68,31 @@ func (ti *TreeItem) Init() tea.Cmd {
 
 func (ti *TreeItem) GetItems() []*TreeItem {
 	return ti.Children
+}
+
+// SelectPrevious - this is being invoked on a TreeItem that is currently selected and the
+// user wants to move up to the previous selection. This will involve recursively going up the
+// tree until we find the one to select or we get to the top
+func (ti *TreeItem) SelectPrevious() {
+	parentItems := ti.Parent.GetItems()
+
+	for x, item := range parentItems {
+		if item == ti {
+			// Check to see if there is a previous one in the current list
+			if x-1 >= 0 {
+				item.ParentTree.ActiveItem = parentItems[x-1]
+			} else {
+				// Nope, we were at the top. So now we just activate our Parent
+				// Just make sure the parent is an item and not the tree. If it's the tree,
+				// then we stop
+				par, ok := ti.Parent.(*TreeItem)
+				if ok {
+					item.ParentTree.ActiveItem = par
+				}
+			}
+			return
+		}
+	}
 }
 
 func (ti *TreeItem) View() string {
@@ -227,6 +257,12 @@ func (t *Tree) setInitialValues() {
 	t.initialized = true
 }
 
+// Returning nil here means you can't go "up" outside of the tree widget, so if this widget is embedded with others,
+// this will prevent getting out of the tree.
+func (t *Tree) GetParent() ItemHolder {
+	return nil
+}
+
 func (t *Tree) AddChildren(i ...*TreeItem) ItemHolder {
 	if len(i) == 0 {
 		return t
@@ -267,7 +303,40 @@ func (t *Tree) Render() {
 // SelectPrevious - selects the previous TreeItem. This involves first getting the parent and then telling the parent to select the previous item from the current selection. If we're already at the first child, then we go to the grandparent and select the previous parent item from us, and then we descend to the most open child and activate that.rune
 func (t *Tree) SelectPrevious() {
 	active := t.ActiveItem
-	parent := active.Parent
+	if active != nil {
+		active.SelectPrevious()
+		return
+	}
+	/*
+		parent := active.GetParent()
+		var grandparent ItemHolder
+		if parent != nil {
+			grandparent = parent.GetParent()
+		}
+
+		parentItems := parent.GetItems()
+
+		for x, item := range parentItems {
+			if item == active {
+				if x-1 >= 0 {
+					t.ActiveItem = parentItems[x-1]
+				}
+				return
+			}
+		}
+	*/
+	log.Println("prev not found")
+}
+
+func (t *Tree) OldSelectPrevious() {
+	active := t.ActiveItem
+	parent := active.GetParent()
+	/*
+		var grandparent ItemHolder
+		if parent != nil {
+			grandparent = parent.GetParent()
+		}
+	*/
 	parentItems := parent.GetItems()
 
 	for x, item := range parentItems {
