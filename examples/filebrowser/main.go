@@ -24,8 +24,10 @@ var (
 )
 
 type FileBrowserModel struct {
-	dir  string
-	Tree *teatree.Tree
+	dir      string
+	Tree     *teatree.Tree
+	info     func()
+	quitting bool
 }
 
 func (fm *FileBrowserModel) Init() tea.Cmd {
@@ -33,7 +35,25 @@ func (fm *FileBrowserModel) Init() tea.Cmd {
 }
 
 func (fm *FileBrowserModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	return fm.Tree.Update(msg)
+	log.Printf("fm update, msg type: %T\n", msg)
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		log.Println("keymsg:", msg.String())
+		switch msg.String() {
+		case "ctrl+c", "q":
+			fm.quitting = true
+			return fm, tea.Quit
+		case "?":
+			log.Println("got a ?")
+			if fm.info != nil {
+				fm.info()
+			}
+			return fm, nil
+		}
+	}
+	//return fm, nil
+	_, cmd := fm.Tree.Update(msg)
+	return fm, cmd
 }
 
 func (fm *FileBrowserModel) View() string {
@@ -43,7 +63,7 @@ func (fm *FileBrowserModel) View() string {
 func (fm *FileBrowserModel) walk(p string, item teatree.ItemHolder) error {
 	err := filepath.WalkDir(p, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
-			fmt.Printf("prevent panic by handling failure accessing a path %q: %v\n", path, err)
+			log.Printf("prevent panic by handling failure accessing a path %q: %v\n", path, err)
 			return err
 		}
 
@@ -67,9 +87,9 @@ func (fm *FileBrowserModel) walk(p string, item teatree.ItemHolder) error {
 			}
 		}
 		var children []*teatree.TreeItem
-		item := teatree.NewItem(path, icon, canHaveChildren, children, openFunc, nil, nil)
+		newitem := teatree.NewItem(path, icon, canHaveChildren, children, openFunc, nil, nil)
 		// TODO: Need to add OpenFunc() that can walk another hierarchy level.
-		fm.Tree.AddChildren(item)
+		item.AddChildren(newitem)
 
 		if d.IsDir() && path != p {
 			// Do not descend into subdirectories
@@ -80,7 +100,7 @@ func (fm *FileBrowserModel) walk(p string, item teatree.ItemHolder) error {
 	})
 
 	if err != nil {
-		fmt.Printf("error walking the path %q: %v\n", p, err)
+		log.Printf("error walking the path %q: %v\n", p, err)
 		return err
 	}
 	return nil
@@ -91,6 +111,9 @@ func New(dir string) tea.Model {
 		dir:  dir,
 		Tree: teatree.New().(*teatree.Tree),
 	}
+	fm.info = func() {
+		log.Print("INFO")
+	}
 	if err := fm.walk(dir, fm.Tree); err != nil {
 		log.Fatal(err)
 	}
@@ -99,6 +122,14 @@ func New(dir string) tea.Model {
 
 func main() {
 	//dir := "/home/cfox"
+	f, err := tea.LogToFile("debug.log", "debug")
+	if err != nil {
+		fmt.Println("problem opening log file:", err.Error())
+		return
+	}
+	defer f.Close()
+	log.Println("testing")
+
 	dir := "."
 	m := New(dir)
 	p := tea.NewProgram(m)

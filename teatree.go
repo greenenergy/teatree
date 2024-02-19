@@ -1,7 +1,7 @@
 package teatree
 
 import (
-	"fmt"
+	"log"
 	"strings"
 	"sync"
 
@@ -66,7 +66,15 @@ func (ti *TreeItem) GetItems() []*TreeItem {
 func (ti *TreeItem) View() string {
 	// Return the view string for myself plus my children if I am open
 	//return " " + "󰅂" + ti.Icon + " " + ti.Name
-	return ti.Icon + " " + ti.Name
+	s := ti.Icon + " " + ti.Name
+	if len(ti.Children) > 0 && ti.Open {
+		var kids []string
+		for _, item := range ti.Children {
+			kids = append(kids, item.View())
+		}
+		s += "\n" + strings.Join(kids, "\n")
+	}
+	return s
 }
 
 func (ti *TreeItem) GetPath() []string {
@@ -86,7 +94,18 @@ func (ti *TreeItem) CloseChildren() {
 }
 
 func (ti *TreeItem) ToggleChildren() {
-	ti.Open = !ti.Open
+	if ti.CanHaveChildren {
+		ti.Open = !ti.Open
+		if ti.Open {
+			if ti.OpenFunc != nil {
+				ti.OpenFunc(ti)
+			}
+		} else {
+			if ti.CloseFunc != nil {
+				ti.CloseFunc(ti)
+			}
+		}
+	}
 }
 
 // AddChildren - adds a list of children to an item, and then returns the item
@@ -207,7 +226,7 @@ func (t *Tree) Init() tea.Cmd {
 }
 
 func (t *Tree) Render() {
-	fmt.Println("At Tree.Render()")
+	log.Println("At Tree.Render()")
 }
 
 // SelectPrevious - selects the previous TreeItem. This involves first getting the parent and then telling the parent to select the previous item from the current selection. If we're already at the first child, then we go to the grandparent and select the previous parent item from us, and then we descend to the most open child and activate that.rune
@@ -224,7 +243,7 @@ func (t *Tree) SelectPrevious() {
 			return
 		}
 	}
-	fmt.Println("prev not found")
+	log.Println("prev not found")
 }
 
 // SelectNext is like SelectPrevious, but the other way
@@ -241,22 +260,21 @@ func (t *Tree) SelectNext() {
 			return
 		}
 	}
-	fmt.Println("next not found")
+	log.Println("next not found")
 }
 
 // ToggleChild will toggle the open/closed state of the current selection. This only has meaning if there
 // are actually children
 func (t *Tree) ToggleChild() {
-	fmt.Println("-1-")
 	if t.ActiveItem != nil {
-		fmt.Println("-2-")
-		if t.ActiveItem.OpenFunc != nil {
-			t.ActiveItem.OpenFunc(t.ActiveItem)
-		}
+		t.ActiveItem.ToggleChildren()
+	} else {
+		log.Println("No active items to toggle")
 	}
 }
 
 func (t *Tree) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	log.Printf("tree update, msg type: %T\n", msg)
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		// TODO: Do I take into account margin & border?
@@ -267,6 +285,8 @@ func (t *Tree) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// TODO: Convert these simple strings to a configurable keymap
 	case tea.KeyMsg:
 		switch msg.String() {
+		case "?":
+			log.Println("info")
 		case "up", "k":
 			t.SelectPrevious()
 		case "down", "j":
@@ -275,7 +295,6 @@ func (t *Tree) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			t.quitting = true
 			return t, tea.Quit
 		case " ", ".":
-			fmt.Println("at ToggleChild")
 			t.ToggleChild()
 			return t, nil
 		}
@@ -312,20 +331,10 @@ func (t *Tree) View() string {
 			views = append(views, unfocusedStyle.Render(s))
 		}
 	}
+	//return strings.Join(views, "\n")
+
 	return lipgloss.JoinVertical(
 		lipgloss.Left, views...,
 	)
-}
 
-func (t *Tree) OldView() string {
-	if !t.initialized {
-		return ""
-	}
-	var s strings.Builder
-	// Iterate through the children, calling View() on each of them.
-	for _, item := range t.Items {
-		s.WriteString(item.View())
-		s.WriteRune('\n')
-	}
-	return s.String()
 }
