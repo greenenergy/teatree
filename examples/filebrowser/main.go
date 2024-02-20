@@ -16,6 +16,10 @@ import (
 const IconFolder = "\U000F024B"
 const IconFile = "\U000F0214"
 
+const GoGopherDev = "\ue626"
+const GoGopher = "\ue724"
+const GoTitle = "\U000F07D3"
+
 var (
 	folderColor = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#FFCF00")) // yellow
@@ -77,7 +81,11 @@ func (fm *FileBrowserModel) walk(p string, item teatree.ItemHolder) error {
 		if d.IsDir() {
 			icon = folderColor.Render(IconFolder)
 		} else {
-			icon = fileColor.Render(IconFile)
+			if strings.HasSuffix(d.Name(), ".go") {
+				icon = fileColor.Render(GoTitle)
+			} else {
+				icon = fileColor.Render(IconFile)
+			}
 		}
 
 		openFunc := func(ti *teatree.TreeItem) {
@@ -126,16 +134,20 @@ func New(dir string) tea.Model {
 }
 
 func main() {
-	//dir := "/home/cfox"
+	if len(os.Args) < 1 {
+		fmt.Println("usage: filebrowser <foldername>")
+		return
+	}
+	// Since Bubbletea captures all console I/O, we can just write
+	// everything to a logfile instead and tail that separately
 	f, err := tea.LogToFile("debug.log", "debug")
 	if err != nil {
 		fmt.Println("problem opening log file:", err.Error())
 		return
 	}
 	defer f.Close()
-	log.Println("testing")
 
-	dir := "."
+	dir := os.Args[1]
 	m := New(dir)
 	p := tea.NewProgram(m)
 	if _, err := p.Run(); err != nil {

@@ -32,6 +32,9 @@ const Organization = "\uf42b"
 
 const Folder = "\U000F024B"
 const File = "\U000F0214"
+const GoGopherDev = "\ue626"
+const GoGopher = "\ue724"
+const GoTitle = "\U000F07D3"
 
 func TestSymbols(t *testing.T) {
 	m := New()
@@ -60,7 +63,9 @@ func TestSymbols(t *testing.T) {
 	fmt.Println(Database, "Database")
 	fmt.Println(User, "User")
 	fmt.Println(UserGroup, "UserGroup")
-
+	fmt.Println(GoGopherDev, "GoGopherDev")
+	fmt.Println(GoGopher, "GoGopher")
+	fmt.Println(GoTitle, "GoTitle")
 	fmt.Println(redstyle.Render(Organization), "Organization")
 }
 
