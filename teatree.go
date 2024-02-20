@@ -73,14 +73,41 @@ func (ti *TreeItem) GetItems() []*TreeItem {
 // SelectPrevious - this is being invoked on a TreeItem that is currently selected and the
 // user wants to move up to the previous selection. This will involve recursively going up the
 // tree until we find the one to select or we get to the top
-func (ti *TreeItem) SelectPrevious() {
-	parentItems := ti.Parent.GetItems()
+//
+// TODO: SelectPrevious() does not work in the following situation:
+//
+// 󰅀 Item 1
+//    Sub 1
+//      SubSub 1   **TOHERE
+// 󰅀 Item 2	**FROMHERE
+//    AA
+//    BB
+// 󰅂 Item 3
 
-	for x, item := range parentItems {
+func (ti *TreeItem) SelectPrevious() {
+	siblingItems := ti.Parent.GetItems()
+
+	for x, item := range siblingItems {
 		if item == ti {
 			// Check to see if there is a previous one in the current list
 			if x-1 >= 0 {
-				item.ParentTree.ActiveItem = parentItems[x-1]
+				newItem := siblingItems[x-1]
+				// We want the next one "up". This could be the previous sibling, or if that sibling is open, it could be one of the siblings's children
+				for {
+					// Can this item have children?
+					if newItem.CanHaveChildren && newItem.Open {
+						// If so, we want to check again with the last one in this list. This could
+						// be a many level tree, and we always want to check the last unopened child
+						lastKid := len(newItem.Children) - 1
+						// Descend into this child and iterate through checking this one
+						newItem = newItem.Children[lastKid]
+					} else {
+						item.ParentTree.ActiveItem = newItem
+						return
+					}
+
+					//item.ParentTree.ActiveItem = siblingItems[x-1]
+				}
 			} else {
 				// Nope, we were at the top. So now we just activate our Parent
 				// Just make sure the parent is an item and not the tree. If it's the tree,
