@@ -13,8 +13,6 @@ import (
 const NoChevron = " "
 const ChevronRight = "\U000F0142"
 const ChevronDown = "\U000F0140"
-const Folder = "\U000F024B"
-const File = "\U000F0214"
 
 type ItemHolder interface {
 	GetItems() []*TreeItem

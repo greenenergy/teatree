@@ -30,6 +30,9 @@ const User = "\uf007"
 const UserGroup = "\U000f0849"
 const Organization = "\uf42b"
 
+const Folder = "\U000F024B"
+const File = "\U000F0214"
+
 func TestSymbols(t *testing.T) {
 	m := New()
 
