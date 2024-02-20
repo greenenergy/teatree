@@ -30,10 +30,14 @@ type ItemHolder interface {
 
 var (
 	unfocusedStyle = lipgloss.NewStyle().
-			Border(lipgloss.HiddenBorder())
+			Border(lipgloss.HiddenBorder()).
+			BorderTop(false).
+			BorderBottom(false)
 		//Background(lipgloss.Color("#000000"))
 	focusedStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
+			BorderTop(false).
+			BorderBottom(false).
 			BorderForeground(lipgloss.Color("62"))
 	//Background(lipgloss.Color("#FFFFFF"))
 )
@@ -375,28 +379,6 @@ func (t *Tree) SelectNext() {
 	if active != nil {
 		active.SelectNext()
 		return
-	}
-	log.Println("next not found")
-}
-
-func (t *Tree) OldSelectNext() {
-	active := t.ActiveItem
-	parent := active.Parent
-	parentItems := parent.GetItems()
-
-	// If this has children, and they are open, then "down" will activate the first child
-	if len(active.Children) > 0 && active.Open {
-		t.ActiveItem = active.Children[0]
-		return
-	}
-
-	for x, item := range parentItems {
-		if item == active {
-			if x+1 < len(parentItems) {
-				t.ActiveItem = parentItems[x+1]
-			}
-			return
-		}
 	}
 	log.Println("next not found")
 }
