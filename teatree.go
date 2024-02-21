@@ -22,6 +22,7 @@ type ItemHolder interface {
 	GetPath() []string
 	AddChildren(...*TreeItem) ItemHolder
 	GetParent() ItemHolder
+	Refresh() // This tells the item holder to delete all of its children and re-read them.
 }
 
 // Styling
@@ -66,6 +67,11 @@ func (ti *TreeItem) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (ti *TreeItem) Init() tea.Cmd {
 	return nil
+}
+
+func (ti *TreeItem) Refresh() {
+	ti.Children = []*TreeItem{}
+	ti.Open = false
 }
 
 func (ti *TreeItem) GetItems() []*TreeItem {
@@ -355,12 +361,6 @@ func (t *Tree) Init() tea.Cmd {
 	return nil
 }
 
-/*
-func (t *Tree) Render() {
-	log.Println("At Tree.Render()")
-}
-*/
-
 // SelectPrevious - selects the previous TreeItem. This involves first getting the parent and then telling the parent to select the previous item from the current selection. If we're already at the first child, then we go to the grandparent and select the previous parent item from us, and then we descend to the most open child and activate that.rune
 func (t *Tree) SelectPrevious() {
 	active := t.ActiveItem
@@ -390,11 +390,15 @@ func (t *Tree) ToggleChild() {
 		log.Println("No active items to toggle")
 	}
 }
+func (t *Tree) Refresh() {
+	t.Items = []*TreeItem{}
+}
 
 func (t *Tree) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	log.Printf("tree update, msg type: %T\n", msg)
+	//log.Printf("tree update, msg type: %T\n", msg)
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
+		log.Printf("WindowSizeMsg: Width: %d, Height: %d", msg.Width, msg.Height)
 		// TODO: Do I take into account margin & border?
 		t.Width = msg.Width
 		t.Height = msg.Height

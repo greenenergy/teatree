@@ -39,11 +39,22 @@ func (fm *FileBrowserModel) Init() tea.Cmd {
 }
 
 func (fm *FileBrowserModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	log.Printf("fm update, msg type: %T\n", msg)
+	//log.Printf("fm update, msg type: %T\n", msg)
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		log.Println("keymsg:", msg.String())
 		switch msg.String() {
+		case "r": // Refresh - it will cause the parent of the currently selected item to delete all children and re-fetch them.
+			parent := fm.Tree.ActiveItem.GetParent()
+			parent.Refresh()
+			if _, ok := parent.(*teatree.Tree); ok {
+				// If we're already at the top level, it means a refresh of the root tree
+				fm.Tree.ActiveItem = fm.Tree.Items[0]
+			} else {
+				// If we're not at the top, the simplest thing is to just activate the parent of the
+				// current item and close it for re-opening
+				fm.Tree.ActiveItem = parent.(*teatree.TreeItem)
+			}
+
 		case "ctrl+c", "q":
 			fm.quitting = true
 			return fm, tea.Quit
@@ -62,6 +73,11 @@ func (fm *FileBrowserModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (fm *FileBrowserModel) View() string {
 	return fm.Tree.View()
+}
+
+func (fm *FileBrowserModel) Refresh() {
+	// First, wipe out the
+	fm.Tree.Refresh()
 }
 
 func (fm *FileBrowserModel) walk(p string, item teatree.ItemHolder) error {
@@ -90,8 +106,8 @@ func (fm *FileBrowserModel) walk(p string, item teatree.ItemHolder) error {
 
 		openFunc := func(ti *teatree.TreeItem) {
 			// This function is called when the user toggles an item that can have children. For now that only means this is a folder and we are now supposed to walk the ti's path, adding items
-			// If we have no children, then we should walk the directroy.
-			// If we DO have children, there should be some way to bust the cache
+			// If we have no children, then we should walk the directory.
+			// If we DO have children, there should be some way to bust the cache, so that once it's been read, if new items appear they will be read as well. Maybe using a last modified date?
 			if len(ti.Children) == 0 {
 				fullpath := strings.Join(ti.GetPath(), "/")
 				//fmt.Println("supposed to walk:", fullpath)
