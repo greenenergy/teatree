@@ -150,7 +150,7 @@ func New(dir string) tea.Model {
 }
 
 func main() {
-	if len(os.Args) < 1 {
+	if len(os.Args) < 2 {
 		fmt.Println("usage: filebrowser <foldername>")
 		return
 	}
@@ -162,6 +162,7 @@ func main() {
 		return
 	}
 	defer f.Close()
+	log.Println("os.Args:", os.Args)
 
 	dir := os.Args[1]
 	m := New(dir)

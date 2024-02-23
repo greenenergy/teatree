@@ -151,7 +151,6 @@ func (ti *TreeItem) SelectNext() {
 		}
 		if ti.Parent == ti.ParentTree {
 			// We've hit the top
-			log.Println("** Found the parent, stopping treeclimb")
 			return
 		}
 		// To get here, the user has tried to go past the end of the current list of children.
@@ -160,6 +159,79 @@ func (ti *TreeItem) SelectNext() {
 		descend = false
 		ti = ti.Parent.(*TreeItem)
 	}
+}
+
+// ScrollView is like View(), except that it takes a top and bottom line for scroll clipping.
+// If the topline is <0 , then the list is starting above the visible area, so we need to skip
+// to the next line, and keep doing that until topline is >= 0, then we can start rendering.
+// The bottomline is based on the actual distance from the 0 topline. So for example if the top
+// was scrolled up 5 lines, then the topline would be -5, and if the display area was from 0-50, then
+// the bottomline would be 50, even though the topline is -5. The rendering should stop once the
+// topline is > the bottomline.
+func (ti *TreeItem) ScrollView(topline, bottomline int) (int, string) {
+	// Return the view string for myself plus my children if I am open
+	var s string
+	for x := 0; x < ti.indent; x++ {
+		s += "  "
+	}
+	if ti.CanHaveChildren {
+		if ti.Open {
+			s += ChevronDown
+		} else {
+			s += ChevronRight
+		}
+	} else {
+		s += NoChevron
+	}
+
+	ai := ti.ParentTree.ActiveItem
+
+	render := true
+	if topline < 0 {
+		log.Printf("topline < 0, render=false")
+		render = false
+
+	}
+
+	if render {
+		if ai != nil && ai == ti {
+			// If this is the active item, then we should be highlit
+			s = focusedStyle.Render(s + ti.Icon + " " + ti.Name)
+		} else {
+			//s += ti.Icon + " " + ti.Name
+			s = unfocusedStyle.Render(s + ti.Icon + " " + ti.Name)
+		}
+	}
+
+	topline += 1
+
+	if topline > bottomline {
+		log.Printf("!!! CLIPPNIG !!!")
+		return topline, ""
+	} else {
+		log.Printf("%s: %d < %d", ti.Name, topline, bottomline)
+	}
+
+	if len(ti.Children) > 0 && ti.Open {
+		var kids []string
+		for _, item := range ti.Children {
+			item.indent = ti.indent + 1
+			var tmps string
+			topline, tmps = item.ScrollView(topline, bottomline)
+			//log.Printf("%s, new topline: %d, bottomline: %d", item.Name, topline, bottomline)
+			kids = append(kids, tmps)
+			if topline >= bottomline {
+				break
+			}
+		}
+		composite := []string{s}
+		composite = append(composite, kids...)
+		s = lipgloss.JoinVertical(
+			lipgloss.Left,
+			composite...,
+		)
+	}
+	return topline, s
 }
 
 func (ti *TreeItem) View() string {
@@ -433,14 +505,27 @@ func (t *Tree) View() string {
 		return ""
 	}
 	var views []string
+	//topline := t.Topline
+
 	// Iterate through the children, calling View() on each of them.
+	topline := t.TopLine
+	log.Printf("starting view, topline: %d", topline)
+	var v string
 	for _, item := range t.Items {
 		item.indent = 0
-		views = append(views, item.View())
-	}
+		topline, v = item.ScrollView(topline, t.Height)
+		//log.Printf("%s, new topline: %d, bottomline: %d", item.Name, topline, t.Height)
+		if v != "" {
+			views = append(views, v)
 
-	return lipgloss.JoinVertical(
+		}
+	}
+	log.Printf(" -----------")
+
+	s := lipgloss.JoinVertical(
 		lipgloss.Left, views...,
 	)
-
+	//s = strings.TrimRight(s, "\n")
+	log.Printf("%s", s)
+	return s
 }
