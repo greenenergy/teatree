@@ -93,6 +93,22 @@ func (ti *TreeItem) GetItems() []*TreeItem {
 // 󰅂 Item 3
 
 func (ti *TreeItem) SelectPrevious() {
+
+	// User has pressed 'up'. If we're at the top of the "view", then we want to try and scroll up by one
+	// We do this by checking the Topline value. If it is > 0, then the view has scrolled down, so we
+	// can decrement it by one.
+
+	tree := ti.ParentTree
+
+	if tree.ActiveLine == 0 {
+		if tree.TopLine > 0 {
+			tree.TopLine -= 1
+		}
+	} else {
+		tree.ActiveLine -= 1
+	}
+	log.Println("ActiveLine:", tree.ActiveLine)
+
 	siblingItems := ti.Parent.GetItems()
 
 	for x, item := range siblingItems {
@@ -132,12 +148,27 @@ func (ti *TreeItem) SelectPrevious() {
 
 // We're being told to select the next item relative to our current position.
 func (ti *TreeItem) SelectNext() {
+	// See if we need to scroll first:
+
+	tree := ti.ParentTree
+
+	atBottom := false
+	if tree.ActiveLine < tree.Height-1 {
+		tree.ActiveLine += 1
+	} else {
+		atBottom = true
+	}
+	log.Println("ActiveLine:", tree.ActiveLine)
+
 	descend := true
 	for {
 		parentItems := ti.Parent.GetItems()
 
 		if len(ti.Children) > 0 && ti.Open && descend {
 			ti.ParentTree.ActiveItem = ti.Children[0]
+			if atBottom {
+				tree.ScrollDown(1)
+			}
 			return
 		}
 
@@ -145,6 +176,9 @@ func (ti *TreeItem) SelectNext() {
 			if item == ti {
 				if x+1 < len(parentItems) {
 					ti.ParentTree.ActiveItem = parentItems[x+1]
+					if atBottom {
+						tree.ScrollDown(1)
+					}
 					return
 				}
 			}
@@ -168,7 +202,7 @@ func (ti *TreeItem) SelectNext() {
 // was scrolled up 5 lines, then the topline would be -5, and if the display area was from 0-50, then
 // the bottomline would be 50, even though the topline is -5. The rendering should stop once the
 // topline is > the bottomline.
-func (ti *TreeItem) ScrollView(topline, bottomline int) (int, string) {
+func (ti *TreeItem) ScrollView(topline, curline, bottomline int) (int, string) {
 	// Return the view string for myself plus my children if I am open
 	var s string
 	for x := 0; x < ti.indent; x++ {
@@ -187,10 +221,8 @@ func (ti *TreeItem) ScrollView(topline, bottomline int) (int, string) {
 	ai := ti.ParentTree.ActiveItem
 
 	render := true
-	if topline < 0 {
-		log.Printf("topline < 0, render=false")
+	if curline < 0 {
 		render = false
-
 	}
 
 	if render {
@@ -203,13 +235,12 @@ func (ti *TreeItem) ScrollView(topline, bottomline int) (int, string) {
 		}
 	}
 
-	topline += 1
+	log.Printf("%s: curr: %d top: %d", ti.Name, curline, bottomline)
 
-	if topline > bottomline {
-		log.Printf("!!! CLIPPNIG !!!")
-		return topline, ""
-	} else {
-		log.Printf("%s: %d < %d", ti.Name, topline, bottomline)
+	curline += 1
+
+	if curline > bottomline {
+		return curline, ""
 	}
 
 	if len(ti.Children) > 0 && ti.Open {
@@ -217,10 +248,10 @@ func (ti *TreeItem) ScrollView(topline, bottomline int) (int, string) {
 		for _, item := range ti.Children {
 			item.indent = ti.indent + 1
 			var tmps string
-			topline, tmps = item.ScrollView(topline, bottomline)
+			curline, tmps = item.ScrollView(topline, curline, bottomline)
 			//log.Printf("%s, new topline: %d, bottomline: %d", item.Name, topline, bottomline)
 			kids = append(kids, tmps)
-			if topline >= bottomline {
+			if curline >= bottomline {
 				break
 			}
 		}
@@ -231,7 +262,7 @@ func (ti *TreeItem) ScrollView(topline, bottomline int) (int, string) {
 			composite...,
 		)
 	}
-	return topline, s
+	return curline, s
 }
 
 func (ti *TreeItem) View() string {
@@ -361,6 +392,7 @@ type Tree struct {
 	ClosedChildrenSymbol string
 	OpenChildrenSymbol   string
 	ActiveItem           *TreeItem
+	ActiveLine           int // Which line, (from 0..Height) is the cursor on?
 	Items                []*TreeItem
 	initialized          bool
 	Style                lipgloss.Style
@@ -500,6 +532,14 @@ func (t *Tree) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return t, cmd
 }
 
+func (t *Tree) ScrollDown(n int) {
+	t.TopLine += n
+}
+
+func (t *Tree) ScrollUp(n int) {
+	t.TopLine -= n
+}
+
 func (t *Tree) View() string {
 	if !t.initialized {
 		return ""
@@ -509,15 +549,15 @@ func (t *Tree) View() string {
 
 	// Iterate through the children, calling View() on each of them.
 	topline := t.TopLine
-	log.Printf("starting view, topline: %d", topline)
+	curline := -topline
+	log.Printf("starting view, topline: %d, bottomline: %d", topline, t.Height+topline)
 	var v string
 	for _, item := range t.Items {
 		item.indent = 0
-		topline, v = item.ScrollView(topline, t.Height)
+		curline, v = item.ScrollView(topline, curline, t.Height+topline)
 		//log.Printf("%s, new topline: %d, bottomline: %d", item.Name, topline, t.Height)
 		if v != "" {
 			views = append(views, v)
-
 		}
 	}
 	log.Printf(" -----------")
@@ -525,7 +565,6 @@ func (t *Tree) View() string {
 	s := lipgloss.JoinVertical(
 		lipgloss.Left, views...,
 	)
-	//s = strings.TrimRight(s, "\n")
-	log.Printf("%s", s)
+	//log.Printf("%s", s)
 	return s
 }
