@@ -260,7 +260,6 @@ func (ti *TreeItem) ViewScrolled(viewtop, curline, bottomline int) (int, string)
 			//log.Printf("%s, curline: %d, bottomline: %d, tmps: %q", item.Name, curline, bottomline, tmps)
 			if tmps != "" {
 				kids = append(kids, tmps)
-
 			}
 			if curline >= bottomline {
 				break
@@ -568,7 +567,7 @@ func (t *Tree) View() string {
 
 	// Iterate through the children, calling View() on each of them.
 	curline := -t.viewtop
-	bottom := t.Height + t.viewtop
+	bottom := t.Height
 	log.Printf("starting view, viewtop: %d, bottomline: %d, ActiveLine: %d", t.viewtop, bottom, t.ActiveLine)
 	var v string
 	for _, item := range t.Items {
