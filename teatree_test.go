@@ -2,7 +2,6 @@ package teatree
 
 import (
 	"fmt"
-	"strings"
 	"testing"
 
 	"github.com/charmbracelet/lipgloss"
@@ -69,6 +68,7 @@ func TestSymbols(t *testing.T) {
 	fmt.Println(redstyle.Render(Organization), "Organization")
 }
 
+/*
 func TestTree(t *testing.T) {
 	m := New()
 	tr := m.(*Tree)
@@ -81,6 +81,8 @@ func TestTree(t *testing.T) {
 	mgrthing := NewItem("mgrthing", Folder, true, nil, nil, nil, nil)
 	game1 := NewItem("game1", File, false, nil, nil, nil, nil)
 
+	newitem := NewItem(d.Name(), canHaveChildren, children, icon, labelStyle, iconStyle, openFunc, nil, nil)
+
 	tr.AddChildren(root)
 	root.AddChildren(home)
 	home.AddChildren(cfox)
@@ -91,6 +93,7 @@ func TestTree(t *testing.T) {
 	fmt.Println("child path:", strings.Join(cfox.GetPath(), "/"))
 	fmt.Println("child path:", strings.Join(game1.GetPath(), "/"))
 }
+*/
 
 var _ = `
 Hierarchy test

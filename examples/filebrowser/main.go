@@ -142,7 +142,8 @@ func (fm *FileBrowserModel) walk(p string, item teatree.ItemHolder) error {
 		openFunc := func(ti *teatree.TreeItem) {
 			// This function is called when the user toggles an item that can have children. For now that only means this is a folder and we are now supposed to walk the ti's path, adding items
 			// If we have no children, then we should walk the directory.
-			// If we DO have children, there should be some way to bust the cache, so that once it's been read, if new items appear they will be read as well. Maybe using a last modified date?
+			// If we DO have children, they will be cached. Added a "r" refresh handler to
+			// cause a directory to be re-read, to take care of directory changes.
 			if len(ti.Children) == 0 {
 				fullpath := strings.Join(ti.GetPath(), "/")
 				//fmt.Println("supposed to walk:", fullpath)
