@@ -2,6 +2,7 @@ package teatree
 
 import (
 	"log"
+	"strings"
 	"sync"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -281,14 +282,18 @@ func (ti *TreeItem) ViewScrolled(viewtop, curline, bottomline int) (int, string)
 			var tmps string
 			curline, tmps = item.ViewScrolled(viewtop, curline, bottomline)
 			//log.Printf("%s, curline: %d, bottomline: %d, tmps: %q", item.Name, curline, bottomline, tmps)
-			if tmps != "" {
+			if strings.TrimSpace(tmps) != "" {
 				kids = append(kids, tmps)
 			}
 			if curline >= bottomline {
 				break
 			}
 		}
-		composite := []string{s}
+		var composite []string
+		if s != "" {
+			composite = append(composite, s)
+		}
+
 		composite = append(composite, kids...)
 		s = lipgloss.JoinVertical(
 			lipgloss.Left,

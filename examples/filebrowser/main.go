@@ -33,9 +33,17 @@ func (fm *FileBrowserModel) Init() tea.Cmd {
 
 func (fm *FileBrowserModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	//log.Printf("fm update, msg type: %T\n", msg)
-	switch msg := msg.(type) {
+	switch tmsg := msg.(type) {
+	/*
+		// This cuts the display area in half to make debugging easier. We can see accidental scrolls, for example.
+			case tea.WindowSizeMsg:
+				tmsg.Height = tmsg.Height / 2
+				log.Printf("WindowSizeMsg: Halving height: Height: %d", tmsg.Height)
+				msg = tmsg
+	*/
+
 	case tea.KeyMsg:
-		switch msg.String() {
+		switch tmsg.String() {
 		case "r": // Refresh - it will cause the parent of the currently selected item to delete all children and re-fetch them.
 			parent := fm.Tree.ActiveItem.GetParent()
 			parent.Refresh()
