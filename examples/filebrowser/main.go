@@ -32,7 +32,6 @@ func (fm *FileBrowserModel) Init() tea.Cmd {
 }
 
 func (fm *FileBrowserModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	//log.Printf("fm update, msg type: %T\n", msg)
 	switch tmsg := msg.(type) {
 	/*
 		// This cuts the display area in half to make debugging easier. We can see accidental scrolls, for example.
@@ -61,7 +60,6 @@ func (fm *FileBrowserModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return fm, tea.Quit
 
 		case "?":
-			log.Println("got a ?")
 			if fm.info != nil {
 				fm.info()
 			}

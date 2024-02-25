@@ -128,7 +128,6 @@ func (ti *TreeItem) SelectPrevious() {
 	} else {
 		tree.ActiveLine -= 1
 	}
-	log.Println("ActiveLine:", tree.ActiveLine)
 
 	siblingItems := ti.Parent.GetItems()
 
@@ -187,14 +186,12 @@ func (ti *TreeItem) SelectNext() {
 	} else {
 		tree.ActiveLine += 1
 	}
-	log.Printf("ActiveLine: %d, height: %d", tree.ActiveLine, tree.Height)
 	descend := true
 	for {
 		parentItems := ti.Parent.GetItems()
 
 		// Check to see if we are going down into a child. If so, select the first child
 		if len(ti.Children) > 0 && ti.Open && descend {
-			log.Println(">>> picking first child")
 			ti.ParentTree.SetActive(ti.Children[0])
 			if atBottom {
 				tree.ScrollDown(1)
@@ -209,7 +206,6 @@ func (ti *TreeItem) SelectNext() {
 			if item == ti {
 				if x+1 < len(parentItems) {
 					// Select the sibling if there is one
-					log.Println(">>> picking next sibling")
 					ti.ParentTree.SetActive(parentItems[x+1])
 					if atBottom {
 						tree.ScrollDown(1)
@@ -267,8 +263,6 @@ func (ti *TreeItem) ViewScrolled(viewtop, curline, bottomline int) (int, string)
 		s = pre_s + istyle.Render(s+ti.Icon()) + baseline.Render(" ") + lstyle.Render(ti.Name)
 	}
 
-	log.Printf("%s: curr: %d top: %d, bottom: %d", ti.Name, curline, viewtop, bottomline)
-
 	curline += 1
 
 	if curline > bottomline {
@@ -281,7 +275,6 @@ func (ti *TreeItem) ViewScrolled(viewtop, curline, bottomline int) (int, string)
 			item.indent = ti.indent + 1
 			var tmps string
 			curline, tmps = item.ViewScrolled(viewtop, curline, bottomline)
-			//log.Printf("%s, curline: %d, bottomline: %d, tmps: %q", item.Name, curline, bottomline, tmps)
 			if strings.TrimSpace(tmps) != "" {
 				kids = append(kids, tmps)
 			}
@@ -512,7 +505,6 @@ func (t *Tree) SelectPrevious() {
 		active.SelectPrevious()
 		return
 	}
-	log.Println("prev not found")
 }
 
 // SelectNext is like SelectPrevious, but the other way
@@ -522,7 +514,6 @@ func (t *Tree) SelectNext() {
 		active.SelectNext()
 		return
 	}
-	log.Println("next not found")
 }
 
 // ToggleChild will toggle the open/closed state of the current selection. This only has meaning if there
@@ -530,8 +521,6 @@ func (t *Tree) SelectNext() {
 func (t *Tree) ToggleChild() {
 	if t.ActiveItem != nil {
 		t.ActiveItem.ToggleChildren()
-	} else {
-		log.Println("No active items to toggle")
 	}
 }
 func (t *Tree) Refresh() {
@@ -539,10 +528,8 @@ func (t *Tree) Refresh() {
 }
 
 func (t *Tree) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	//log.Printf("tree update, msg type: %T\n", msg)
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		log.Printf("WindowSizeMsg: Width: %d, Height: %d", msg.Width, msg.Height)
 		// TODO: Do I take into account margin & border?
 		t.Width = msg.Width
 		t.Height = msg.Height
@@ -573,18 +560,15 @@ func (t *Tree) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (t *Tree) SetActive(ti *TreeItem) {
-	log.Printf("SetActive(%s)", ti.Name)
 	t.ActiveItem = ti
 }
 
 // ScrollDown moves the "display" area down the virtual list. This actually looks like scrolling up ((the items move up the screen) Not sure if this is counterintuitive or not
 func (t *Tree) ScrollDown(n int) {
-	log.Printf("** ScrollDown(%d)", n)
 	t.viewtop += n
 }
 
 func (t *Tree) ScrollUp(n int) {
-	log.Printf("** ScrollUp(%d)", n)
 	t.viewtop -= n
 }
 
@@ -593,22 +577,17 @@ func (t *Tree) View() string {
 		return ""
 	}
 	var views []string
-	//viewtop := t.viewtop
 
 	// Iterate through the children, calling View() on each of them.
 	curline := -t.viewtop
 	bottom := t.Height
-	log.Printf("starting view, viewtop: %d, bottomline: %d, ActiveLine: %d", t.viewtop, bottom, t.ActiveLine)
 	var v string
 	for _, item := range t.Items {
 		item.indent = 0
 		curline, v = item.ViewScrolled(t.viewtop, curline, bottom)
-		log.Printf("tree curline: %d, bottom: %d", curline, bottom)
 		if curline > bottom {
-			log.Printf("tree clipping bottom")
 			break
 		}
-		//log.Printf("%s, new viewtop: %d, bottomline: %d", item.Name, viewtop, t.Height)
 		if v != "" {
 			views = append(views, v)
 		}
@@ -617,7 +596,5 @@ func (t *Tree) View() string {
 	s := lipgloss.JoinVertical(
 		lipgloss.Left, views...,
 	)
-	log.Printf("%s", s)
-	log.Printf(" ------------------------------------------------------------------")
 	return s
 }
