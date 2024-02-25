@@ -20,13 +20,6 @@ const GoGopherDev = "\ue626"
 const GoGopher = "\ue724"
 const GoTitle = "\U000F07D3"
 
-var (
-	folderColor = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#FFCF00")) // yellow
-	fileColor = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#00FFFF")) // cyan
-)
-
 type FileBrowserModel struct {
 	dir      string
 	Tree     *teatree.Tree
@@ -58,6 +51,7 @@ func (fm *FileBrowserModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c", "q":
 			fm.quitting = true
 			return fm, tea.Quit
+
 		case "?":
 			log.Println("got a ?")
 			if fm.info != nil {
@@ -66,7 +60,6 @@ func (fm *FileBrowserModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return fm, nil
 		}
 	}
-	//return fm, nil
 	_, cmd := fm.Tree.Update(msg)
 	return fm, cmd
 }
@@ -75,9 +68,36 @@ func (fm *FileBrowserModel) View() string {
 	return fm.Tree.View()
 }
 
-func (fm *FileBrowserModel) Refresh() {
-	// First, wipe out the
-	fm.Tree.Refresh()
+func TextColor(ti *teatree.TreeItem) lipgloss.Style {
+	return lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#FFFFFF")) // white
+}
+
+func FolderIcon(ti *teatree.TreeItem) string {
+	return IconFolder
+}
+
+func FolderColor(ti *teatree.TreeItem) lipgloss.Style {
+	return lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#FFCF00")) // yellow
+}
+
+func GoFileIcon(ti *teatree.TreeItem) string {
+	return GoTitle
+}
+
+func GoFileColor(ti *teatree.TreeItem) lipgloss.Style {
+	return lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#00FFFF")) // cyan
+}
+
+func FileIcon(ti *teatree.TreeItem) string {
+	return IconFile
+}
+
+func FileColor(ti *teatree.TreeItem) lipgloss.Style {
+	return lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#7FFF7F")) // palegreen
 }
 
 func (fm *FileBrowserModel) walk(p string, item teatree.ItemHolder) error {
@@ -91,16 +111,25 @@ func (fm *FileBrowserModel) walk(p string, item teatree.ItemHolder) error {
 			return nil
 		}
 
-		var icon string
+		var icon func(ti *teatree.TreeItem) string
+		var iconStyle func(ti *teatree.TreeItem) lipgloss.Style
+		var labelStyle func(ti *teatree.TreeItem) lipgloss.Style
+
 		canHaveChildren := d.IsDir()
 
+		labelStyle = TextColor
+		// Default the icon and style to basic file style and icon
+		// These will be overridden by the next if statement
+		icon = FileIcon
+		iconStyle = FileColor
+
 		if d.IsDir() {
-			icon = folderColor.Render(IconFolder)
+			icon = FolderIcon
+			iconStyle = FolderColor
 		} else {
 			if strings.HasSuffix(d.Name(), ".go") {
-				icon = fileColor.Render(GoTitle)
-			} else {
-				icon = fileColor.Render(IconFile)
+				icon = GoFileIcon
+				iconStyle = GoFileColor
 			}
 		}
 
@@ -115,9 +144,7 @@ func (fm *FileBrowserModel) walk(p string, item teatree.ItemHolder) error {
 			}
 		}
 		var children []*teatree.TreeItem
-		//newitem := teatree.NewItem(path, icon, canHaveChildren, children, openFunc, nil, nil)
-		newitem := teatree.NewItem(d.Name(), icon, canHaveChildren, children, openFunc, nil, nil)
-		// TODO: Need to add OpenFunc() that can walk another hierarchy level.
+		newitem := teatree.NewItem(d.Name(), canHaveChildren, children, icon, labelStyle, iconStyle, openFunc, nil, nil)
 		item.AddChildren(newitem)
 
 		if d.IsDir() && path != p {

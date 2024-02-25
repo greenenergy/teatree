@@ -28,33 +28,54 @@ type ItemHolder interface {
 // Styling
 
 var (
-	unfocusedStyle = lipgloss.NewStyle().
-			Border(lipgloss.HiddenBorder()).
-			BorderTop(false).
-			BorderBottom(false)
-		//Background(lipgloss.Color("#000000"))
+	unfocusedStyle = lipgloss.NewStyle()
+	// Border(lipgloss.HiddenBorder()).
+	// BorderTop(false).
+	// BorderBottom(false)
 	focusedStyle = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderTop(false).
-			BorderBottom(false).
-			BorderForeground(lipgloss.Color("62"))
+		//Border(lipgloss.RoundedBorder()).
+		//BorderTop(false).
+		//BorderBottom(false).
+		Background(lipgloss.Color("62")).
+		BorderForeground(lipgloss.Color("62"))
 	//Background(lipgloss.Color("#FFFFFF"))
 )
 
 type TreeItem struct {
 	sync.Mutex
-	ParentTree *Tree
-	Parent     ItemHolder
-	Icon       string `json:"icon"`
-	Name       string `json:"name"`
-	Children   []*TreeItem
-	// CanHaveChildren: By setting this to True, you say that this item can have children. This allows for the implementation of a lazy loader, when you supply an Open() function. This affects how the item is rendered.
-	CanHaveChildren bool
+	ParentTree      *Tree
+	Parent          ItemHolder
+	Name            string
+	Children        []*TreeItem
+	CanHaveChildren bool // CanHaveChildren: By setting this to True, you say that this item can have children. This allows for the implementation of a lazy loader, when you supply an Open() function. This affects how the item is rendered.
 	Open            bool
 	Data            interface{}
 	OpenFunc        func(*TreeItem)
 	CloseFunc       func(*TreeItem)
+	icon            func(*TreeItem) string         // Function returns what the icon should be.
+	labelStyle      func(*TreeItem) lipgloss.Style // Function returns the style for the label, intended for color
+	iconStyle       func(*TreeItem) lipgloss.Style // Function returns the style for the icon, intended for color
 	indent          int
+}
+
+func (ti *TreeItem) Icon() string {
+	if ti.icon != nil {
+		return ti.icon(ti)
+	}
+	return ""
+}
+func (ti *TreeItem) IconStyle() lipgloss.Style {
+	if ti.iconStyle != nil {
+		return ti.iconStyle(ti)
+	}
+	return lipgloss.NewStyle()
+}
+
+func (ti *TreeItem) LabelStyle() lipgloss.Style {
+	if ti.labelStyle != nil {
+		return ti.labelStyle(ti)
+	}
+	return lipgloss.NewStyle()
 }
 
 func (ti *TreeItem) GetParent() ItemHolder {
@@ -234,13 +255,15 @@ func (ti *TreeItem) ViewScrolled(viewtop, curline, bottomline int) (int, string)
 	}
 
 	if render {
+		var baseline lipgloss.Style
 		if ai != nil && ai == ti {
-			// If this is the active item, then we should be highlit
-			s = pre_s + focusedStyle.Render(s+ti.Icon+" "+ti.Name)
+			baseline = focusedStyle
 		} else {
-			//s += ti.Icon + " " + ti.Name
-			s = pre_s + unfocusedStyle.Render(s+ti.Icon+" "+ti.Name)
+			baseline = unfocusedStyle
 		}
+		istyle := baseline.Inherit(ti.IconStyle())
+		lstyle := baseline.Inherit(ti.LabelStyle())
+		s = pre_s + istyle.Render(s+ti.Icon()) + baseline.Render(" ") + lstyle.Render(ti.Name)
 	}
 
 	log.Printf("%s: curr: %d top: %d, bottom: %d", ti.Name, curline, viewtop, bottomline)
@@ -295,10 +318,10 @@ func (ti *TreeItem) View() string {
 
 	if ai != nil && ai == ti {
 		// If this is the active item, then we should be highlit
-		s = focusedStyle.Render(s + ti.Icon + " " + ti.Name)
+		s = focusedStyle.Render(s + ti.Icon() + " " + ti.Name)
 	} else {
 		//s += ti.Icon + " " + ti.Name
-		s = unfocusedStyle.Render(s + ti.Icon + " " + ti.Name)
+		s = unfocusedStyle.Render(s + ti.Icon() + " " + ti.Name)
 	}
 
 	if len(ti.Children) > 0 && ti.Open {
@@ -368,10 +391,12 @@ func (ti *TreeItem) AddChildren(children ...*TreeItem) ItemHolder {
 	return ti
 }
 
-func NewItem(name, icon string, canHaveChildren bool, children []*TreeItem, openFunc, closeFunc func(*TreeItem), data interface{}) *TreeItem {
+func NewItem(name string, canHaveChildren bool, children []*TreeItem, icon func(*TreeItem) string, labelStyle, iconStyle func(*TreeItem) lipgloss.Style, openFunc, closeFunc func(*TreeItem), data interface{}) *TreeItem {
 	return &TreeItem{
 		Name:            name,
-		Icon:            icon,
+		icon:            icon,
+		labelStyle:      labelStyle,
+		iconStyle:       iconStyle,
 		Children:        children,
 		Open:            false,
 		OpenFunc:        openFunc,
@@ -583,11 +608,11 @@ func (t *Tree) View() string {
 			views = append(views, v)
 		}
 	}
-	log.Printf(" -----------")
 
 	s := lipgloss.JoinVertical(
 		lipgloss.Left, views...,
 	)
 	log.Printf("%s", s)
+	log.Printf(" ------------------------------------------------------------------")
 	return s
 }
