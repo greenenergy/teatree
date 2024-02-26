@@ -113,7 +113,6 @@ func (fm *FileBrowserModel) walk(p string, item teatree.ItemHolder) error {
 			return err
 		}
 		if path == p {
-			log.Printf("WalkDir Func, path: %q, DirEntry: %q", path, d.Name())
 			// We don't want to render the folder we were sent. This is redundant and confusing for the user.
 			return nil
 		}
@@ -195,7 +194,6 @@ func main() {
 		return
 	}
 	defer f.Close()
-	log.Println("os.Args:", os.Args)
 
 	dir := os.Args[1]
 	m := New(dir)
