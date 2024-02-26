@@ -113,6 +113,7 @@ func (fm *FileBrowserModel) walk(p string, item teatree.ItemHolder) error {
 			return err
 		}
 		if path == p {
+			log.Printf("WalkDir Func, path: %q, DirEntry: %q", path, d.Name())
 			// We don't want to render the folder we were sent. This is redundant and confusing for the user.
 			return nil
 		}
@@ -145,9 +146,7 @@ func (fm *FileBrowserModel) walk(p string, item teatree.ItemHolder) error {
 			// If we DO have children, they will be cached. Added a "r" refresh handler to
 			// cause a directory to be re-read, to take care of directory changes.
 			if len(ti.Children) == 0 {
-				fullpath := strings.Join(ti.GetPath(), "/")
-				//fmt.Println("supposed to walk:", fullpath)
-				err = fm.walk(fullpath, ti)
+				err = fm.walk(path, ti)
 			}
 		}
 		var children []*teatree.TreeItem
